@@ -30,6 +30,70 @@ void Sim::registerTypes(ECSRegistry &registry, const Config &)
     registry.exportColumn<Agent, Position>(2);
 }
 
+static void generateWorld(Engine &ctx)
+{
+    if (ctx.data().enableRender) {
+        render::RenderingSystem::reset(ctx);
+    }
+
+    RigidBodyPhysicsSystem::reset(ctx);
+
+    // Update the RNG seed for a new episode
+    EpisodeManager &episode_mgr = *ctx.data().episodeMgr;
+    uint32_t episode_idx =
+        episode_mgr.curEpisode.fetch_add(1, std::memory_order_relaxed);
+    ctx.data().rng = RNG::make(episode_idx);
+
+    // Place the building materials
+    // TODO - Add some randomness to this
+    // TODO - Add scattered materials
+    int materialsLen = 7;
+    int materialsWidth = 7;
+    ctx.data().numMaterials = materialsLen * materialsWidth;
+    for (int i = 1; i <= materialsLen; i++) {
+        for (int j = 1; j <= materialsWidth; j++) {
+            Entity e = ctx.data().materials[i*materialsLen + j] = ctx.makeEntityNow<Material>();
+
+            math::Vector3 pos {
+                1 + (float)i,
+                1 + (float)j,
+                1.f,
+            };
+
+            ctx.getUnsafe<Position>(e) = pos;
+            ctx.getUnsafe<Rotation>(e) = Quat { 1, 0, 0, 0 };
+            ctx.getUnsafe<Scale>(e) = Diag3x3 { 1, 1, 1 };
+            ctx.getUnsafe<Velocity>(e) = {
+                Vector3::zero(),
+                Vector3::zero(),
+            };
+            ctx.getUnsafe<ObjectID>(e) = ObjectID { 1 };
+            ctx.getUnsafe<ResponseType>(e) = ResponseType::Dynamic;
+            ctx.getUnsafe<ExternalForce>(e) = Vector3::zero();
+            ctx.getUnsafe<ExternalTorque>(e) = Vector3::zero();
+            ctx.getUnsafe<broadphase::LeafID>(e) =
+                RigidBodyPhysicsSystem::registerEntity(ctx, e, ObjectID { 1 });
+        }
+    }
+
+    ctx.getUnsafe<broadphase::LeafID>(ctx.data().plane) =
+        RigidBodyPhysicsSystem::registerEntity(ctx, ctx.data().plane,
+                                               ObjectID { 0 });
+
+    // Reset the position of the agent
+    Entity agent = ctx.data().agent;
+    ctx.getUnsafe<Position>(agent) = Vector3 { 0, 0, 1 };
+    ctx.getUnsafe<Rotation>(agent) = Quat { 1, 0, 0, 0 };
+    ctx.getUnsafe<Velocity>(agent) = {
+        Vector3::zero(),
+        Vector3::zero(),
+    };
+    ctx.getUnsafe<ExternalForce>(agent) = Vector3::zero();
+    ctx.getUnsafe<ExternalTorque>(agent) = Vector3::zero();
+    ctx.getUnsafe<broadphase::LeafID>(agent) =
+        RigidBodyPhysicsSystem::registerEntity(ctx, agent, ObjectID { 1 });
+}
+
 inline void resetSystem(Engine &ctx, WorldReset &reset)
 {
     if (!reset.resetNow) {
@@ -37,9 +101,13 @@ inline void resetSystem(Engine &ctx, WorldReset &reset)
     }
     reset.resetNow = false;
 
-    // TODO - reset agent position
+    // Delete old materials
+    const CountT num_materials = ctx.data().numMaterials;
+    for (CountT i = 0; i < num_materials; i++) {
+        ctx.destroyEntityNow(ctx.data().materials[i]);
+    }
 
-    // TODO - reset materials
+    generateWorld(ctx);
 }
 
 inline void actionSystem(Engine &,
@@ -132,24 +200,11 @@ Sim::Sim(Engine &ctx, const Config &cfg, const WorldInit &init)
     //                              init.numObstacles * init.numObstacles / 2,
     //                              10);
 
-    agent = ctx.makeEntityNow<Agent>();
-    ctx.getUnsafe<Position>(agent) = Vector3 { 0, 0, 1 };
-    ctx.getUnsafe<Rotation>(agent) = Quat { 1, 0, 0, 0 };
-    ctx.getUnsafe<Velocity>(agent) = {
-        Vector3::zero(),
-        Vector3::zero(),
-    };
-    ctx.getUnsafe<ExternalForce>(agent) = Vector3::zero();
-    ctx.getUnsafe<ExternalTorque>(agent) = Vector3::zero();
-    ctx.getUnsafe<MoveAction>(agent) = MoveAction::Wait;
-    ctx.getUnsafe<Scale>(agent) = Diag3x3 { 1, 1, 1 };
-    ctx.getUnsafe<ObjectID>(agent) = ObjectID { 1 };
-    ctx.getUnsafe<ResponseType>(agent) = ResponseType::Dynamic;
-    ctx.getUnsafe<render::ViewSettings>(agent) =
-        render::RenderingSystem::setupView(ctx, 90.f, 0.001f,
-                                           math::up * 0.5f, { 0 });
-    ctx.getUnsafe<broadphase::LeafID>(agent) =
-        RigidBodyPhysicsSystem::registerEntity(ctx, agent, ObjectID { 1 });
+    // Allocate enough to hold max number of materials
+    // TODO - Add extra for materials scattered
+    int maxMaterialsLen = 9;
+    int maxMaterialsWidth = 9;
+    materials = (Entity *)rawAlloc(sizeof(Entity) * maxMaterialsLen * maxMaterialsWidth);
 
     // Create ground plane during initialization
     plane = ctx.makeEntityNow<Zone>();
@@ -158,6 +213,16 @@ Sim::Sim(Engine &ctx, const Config &cfg, const WorldInit &init)
     ctx.getUnsafe<Scale>(plane) = Diag3x3 { 1, 1, 1 };
     ctx.getUnsafe<ObjectID>(plane) = ObjectID { 0 };
     ctx.getUnsafe<ResponseType>(plane) = ResponseType::Static;
+
+    // Generate agent
+    agent = ctx.makeEntityNow<Agent>();
+    ctx.getUnsafe<MoveAction>(agent) = MoveAction::Wait;
+    ctx.getUnsafe<Scale>(agent) = Diag3x3 { 1, 1, 1 };
+    ctx.getUnsafe<ObjectID>(agent) = ObjectID { 1 };
+    ctx.getUnsafe<ResponseType>(agent) = ResponseType::Dynamic;
+    ctx.getUnsafe<render::ViewSettings>(agent) =
+        render::RenderingSystem::setupView(ctx, 90.f, 0.001f,
+                                           math::up * 0.5f, { 0 });
 
     // Generate building zone
     buildZone = ctx.makeEntityNow<Zone>();
@@ -174,38 +239,9 @@ Sim::Sim(Engine &ctx, const Config &cfg, const WorldInit &init)
     ctx.getUnsafe<ObjectID>(buildZone) = ObjectID { 0 };
     ctx.getUnsafe<ResponseType>(buildZone) = ResponseType::Static;
 
-    // Generate materials
-    int materialsLen = 7;
-    int materialsWidth = 7;
-
-    materials = (Entity *)rawAlloc(sizeof(Entity) * materialsLen * materialsWidth);
     enableRender = cfg.enableRender;
 
-    for (int i = 1; i <= materialsLen; i++) {
-        for (int j = 1; j <= materialsWidth; j++) {
-            Entity e = ctx.data().materials[i*materialsLen + j] = ctx.makeEntityNow<Material>();
-
-            math::Vector3 pos {
-                1 + (float)i,
-                1 + (float)j,
-                1.f,
-            };
-
-            ctx.getUnsafe<Position>(e) = pos;
-            ctx.getUnsafe<Rotation>(e) = Quat { 1, 0, 0, 0 };
-            ctx.getUnsafe<Scale>(e) = Diag3x3 { 1, 1, 1 };
-            ctx.getUnsafe<Velocity>(e) = {
-                Vector3::zero(),
-                Vector3::zero(),
-            };
-            ctx.getUnsafe<ObjectID>(e) = ObjectID { 1 };
-            ctx.getUnsafe<ResponseType>(e) = ResponseType::Dynamic;
-            ctx.getUnsafe<ExternalForce>(e) = Vector3::zero();
-            ctx.getUnsafe<ExternalTorque>(e) = Vector3::zero();
-            ctx.getUnsafe<broadphase::LeafID>(e) =
-                RigidBodyPhysicsSystem::registerEntity(ctx, e, ObjectID { 1 });
-        }
-    }
+    generateWorld(ctx);
 
     ctx.getSingleton<WorldReset>().resetNow = false;
 }
