@@ -36,22 +36,6 @@ enum class MoveAction : int32_t {
     Right,
 };
 
-// A pure physics obstacle with no other components
-struct Zone : public madrona::Archetype<
-    Position,
-    Rotation,
-    Scale,
-    Velocity,
-    ObjectID,
-    ResponseType,
-    madrona::phys::solver::SubstepPrevState,
-    madrona::phys::solver::PreSolvePositional,
-    madrona::phys::solver::PreSolveVelocity,
-    ExternalForce,
-    ExternalTorque,
-    madrona::phys::broadphase::LeafID
-> {};
-
 struct Material : public madrona::Archetype<
     Position,
     Rotation,
@@ -104,11 +88,17 @@ struct Sim : public madrona::WorldBase {
     madrona::Entity agent;
     madrona::Entity plane;
 
-    madrona::Entity buildZone;
-
     madrona::Entity *materials;
     int32_t numMaterials;
     int32_t numAgents;
+
+    int32_t boundsX;
+    int32_t boundsY;
+    int32_t boundsZ;
+
+    // Build zone bounds
+    int32_t zoneBoundsX;
+    int32_t zoneBoundsY;
 
     bool enableRender;
 };

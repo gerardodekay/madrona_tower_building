@@ -21,7 +21,6 @@ void Sim::registerTypes(ECSRegistry &registry, const Config &)
     registry.registerSingleton<WorldReset>();
 
     registry.registerArchetype<Agent>();
-    registry.registerArchetype<Zone>();
     registry.registerArchetype<Material>();
 
     // Export tensors for pytorch
@@ -193,21 +192,23 @@ Sim::Sim(Engine &ctx, const Config &cfg, const WorldInit &init)
     : WorldBase(ctx),
       episodeMgr(init.episodeMgr)
 {
-    // TODO - initialize physic system
-    // RigidBodyPhysicsSystem::init(ctx, init.rigidBodyObjMgr, deltaT,
-    //                              numPhysicsSubsteps, -9.8 * math::up,
-    //                              init.numObstacles + 2,
-    //                              init.numObstacles * init.numObstacles / 2,
-    //                              10);
+    int maxMaterialsLen = 9;
+    int maxMaterialsWidth = 9;
+
+    int maxMaterials = maxMaterialsLen * maxMaterialsWidth;
+
+    RigidBodyPhysicsSystem::init(ctx, init.rigidBodyObjMgr, deltaT,
+                                 numPhysicsSubsteps, -9.8 * math::up,
+                                 maxMaterials + 2,
+                                 maxMaterials * maxMaterials / 2,
+                                 10);
 
     // Allocate enough to hold max number of materials
     // TODO - Add extra for materials scattered
-    int maxMaterialsLen = 9;
-    int maxMaterialsWidth = 9;
     materials = (Entity *)rawAlloc(sizeof(Entity) * maxMaterialsLen * maxMaterialsWidth);
 
-    // Create ground plane during initialization
-    plane = ctx.makeEntityNow<Zone>();
+    // Create ground plane during initialization, we reuse Material for this
+    plane = ctx.makeEntityNow<Material>();
     ctx.getUnsafe<Position>(plane) = Vector3::zero();
     ctx.getUnsafe<Rotation>(plane) = Quat { 1, 0, 0, 0 };
     ctx.getUnsafe<Scale>(plane) = Diag3x3 { 1, 1, 1 };
@@ -223,21 +224,6 @@ Sim::Sim(Engine &ctx, const Config &cfg, const WorldInit &init)
     ctx.getUnsafe<render::ViewSettings>(agent) =
         render::RenderingSystem::setupView(ctx, 90.f, 0.001f,
                                            math::up * 0.5f, { 0 });
-
-    // Generate building zone
-    buildZone = ctx.makeEntityNow<Zone>();
-
-    math::Vector3 zonePos {
-            4,
-            4,
-            3,
-    };
-
-    ctx.getUnsafe<Position>(buildZone) = zonePos;
-    ctx.getUnsafe<Rotation>(buildZone) = Quat { 1, 0, 0, 0 };
-    ctx.getUnsafe<Scale>(buildZone) = Diag3x3 { 6, 6, 6 };
-    ctx.getUnsafe<ObjectID>(buildZone) = ObjectID { 0 };
-    ctx.getUnsafe<ResponseType>(buildZone) = ResponseType::Static;
 
     enableRender = cfg.enableRender;
 
