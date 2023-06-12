@@ -14,6 +14,7 @@ namespace SimpleExample {
 
 // 3D Position & Quaternion Rotation
 // These classes are defined in include/madrona/components.hpp
+using madrona::Entity;
 using madrona::base::Position;
 using madrona::base::Rotation;
 using madrona::base::Scale;
@@ -31,15 +32,26 @@ struct WorldReset {
 
 enum class MoveAction : int32_t {
     Wait = 0,
-    Forward = 1,
-    Left = 2,
-    Right = 3,
-    TurnLeft = 4,
-    TurnRight = 5,
+    Left = 1,
+    Right = 2,
+    Forward = 3,
+    Backward = 4,
+    TurnLeft = 5,
+    TurnRight = 6,
+    Jump = 7,
+    Interact = 8
 };
 
-// A pure physics obstacle with no other components
-struct Obstacle : public madrona::Archetype<
+struct GrabData {
+    Entity constraintEntity;
+};
+
+enum class CarryingObj : int32_t {
+    NotCarrying = 0,
+    IsCarrying = 1
+};
+
+struct Material : public madrona::Archetype<
     Position,
     Rotation,
     Scale,
@@ -69,6 +81,7 @@ struct Agent : public madrona::Archetype<
     ExternalTorque,
     madrona::phys::broadphase::LeafID,
     MoveAction,
+    GrabData,
     madrona::render::ViewSettings
 > {};
 
@@ -91,8 +104,21 @@ struct Sim : public madrona::WorldBase {
     madrona::Entity agent;
     madrona::Entity plane;
 
-    madrona::Entity *obstacles;
-    int32_t numObstacles;
+    madrona::Entity *materials;
+    int32_t numMaterials;
+    int32_t numAgents;
+
+    int32_t boundsX;
+    int32_t boundsY;
+    int32_t boundsZ;
+
+    // Build zone bounds
+    int32_t zoneBoundsMinX;
+    int32_t zoneBoundsMinY;
+
+    // Build zone bounds
+    int32_t zoneBoundsMaxX;
+    int32_t zoneBoundsMaxY;
 
     bool enableRender;
 };

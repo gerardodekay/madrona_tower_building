@@ -31,7 +31,8 @@ public:
     MADRONA_IMPORT madrona::py::Tensor resetTensor() const;
     MADRONA_IMPORT madrona::py::Tensor actionTensor() const;
     MADRONA_IMPORT madrona::py::Tensor positionTensor() const;
-    
+    MADRONA_IMPORT madrona::py::Tensor materialPositionTensor() const;
+
     MADRONA_IMPORT madrona::py::Tensor depthTensor() const;
     MADRONA_IMPORT madrona::py::Tensor rgbTensor() const;
 

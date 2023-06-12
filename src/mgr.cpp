@@ -79,7 +79,7 @@ struct Manager::CPUImpl final : Manager::Impl {
     }
 
     inline virtual void run() final { cpuExec.run(); }
-    
+
     inline virtual Tensor exportTensor(CountT slot,
                                        Tensor::ElementType type,
                                        Span<const int64_t> dims) final
@@ -135,7 +135,7 @@ struct Manager::GPUImpl final : Manager::Impl {
                   .worldDataAlignment = alignof(Sim),
                   .numWorlds = mgr_cfg.numWorlds,
                   .maxViewsPerWorld = 1,
-                  .numExportedBuffers = num_exported_buffers, 
+                  .numExportedBuffers = num_exported_buffers,
                   .gpuID = (uint32_t)mgr_cfg.gpuID,
                   .cameraMode = mgr_cfg.enableRender ?
                       render::CameraMode::Perspective :
@@ -156,7 +156,7 @@ struct Manager::GPUImpl final : Manager::Impl {
     }
 
     inline virtual void run() final { gpuExec.run(); }
-    
+
     virtual inline Tensor exportTensor(CountT slot, Tensor::ElementType type,
                                        Span<const int64_t> dims) final
     {
@@ -292,7 +292,7 @@ static HeapArray<WorldInit> setupWorldInitData(int64_t num_worlds,
 Manager::Impl * Manager::Impl::init(const Config &mgr_cfg)
 {
     // NEED to increase this if exporting more tensors from the simulator
-    const int64_t num_exported_buffers = 3;
+    const int64_t num_exported_buffers = 100;
 
      std::array<char, 1024> import_err;
     auto render_assets = imp::ImportedAssets::importFromDisk({
@@ -334,7 +334,7 @@ Manager::Impl * Manager::Impl::init(const Config &mgr_cfg)
 #ifndef MADRONA_CUDA_SUPPORT
         FATAL("CUDA support not compiled in!");
 #else
-        EpisodeManager *episode_mgr = 
+        EpisodeManager *episode_mgr =
             (EpisodeManager *)cu::allocGPU(sizeof(EpisodeManager));
         // Set the current episode count to 0
         REQ_CUDA(cudaMemset(episode_mgr, 0, sizeof(EpisodeManager)));
@@ -347,7 +347,7 @@ Manager::Impl * Manager::Impl::init(const Config &mgr_cfg)
         HeapArray<WorldInit> world_inits = setupWorldInitData(
             mgr_cfg.numWorlds, mgr_cfg.numObstacles,
             phys_obj_mgr, episode_mgr);
-        
+
          auto *impl = new GPUImpl(mgr_cfg, sim_cfg, std::move(phys_loader),
             episode_mgr, world_inits.data(), num_exported_buffers);
 
@@ -388,6 +388,12 @@ MADRONA_EXPORT Tensor Manager::actionTensor() const
 MADRONA_EXPORT Tensor Manager::positionTensor() const
 {
     return impl_->exportTensor(2, Tensor::ElementType::Float32,
+        {impl_->cfg.numWorlds, 3});
+}
+
+MADRONA_EXPORT Tensor Manager::materialPositionTensor() const
+{
+    return impl_->exportTensor(3, Tensor::ElementType::Float32,
         {impl_->cfg.numWorlds, 3});
 }
 

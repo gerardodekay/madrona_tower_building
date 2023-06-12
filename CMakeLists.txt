@@ -5,6 +5,7 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/external/madrona/cmake/madrona_init.cmake")
 project(SimpleExample LANGUAGES C CXX)
 
 include(setup)
+set(MADRONA_REQUIRE_CUDA ON)
 set(MADRONA_REQUIRE_PYTHON ON)
 include(dependencies)
 
