@@ -52,14 +52,14 @@ static void generateWorld(Engine &ctx)
     int materialsLen = 7;
     int materialsWidth = 7;
     ctx.data().numMaterials = materialsLen * materialsWidth;
-    for (int i = 1; i <= materialsLen; i++) {
-        for (int j = 1; j <= materialsWidth; j++) {
+    for (int i = 0; i < materialsLen; i++) {
+        for (int j = 0; j < materialsWidth; j++) {
             Entity e = ctx.data().materials[i*materialsLen + j] = ctx.makeEntityNow<Material>();
 
             math::Vector3 pos {
-                1 + (float)i * 2,
-                1 + (float)j * 2,
-                1.f,
+                2 + (float)i * 2,
+                2 + (float)j * 2,
+                2.f,
             };
 
             ctx.getUnsafe<Position>(e) = pos;
@@ -79,14 +79,14 @@ static void generateWorld(Engine &ctx)
     }
 
     // Set building zone area
-    ctx.data().zoneBoundsMinX = 16;
-    ctx.data().zoneBoundsMaxX = 26;
+    ctx.data().zoneBoundsMinX = 18;
+    ctx.data().zoneBoundsMaxX = 28;
     ctx.data().zoneBoundsMinY = 4;
     ctx.data().zoneBoundsMaxY = 14;
 
     // Set world bounds
-    ctx.data().boundsX = 27;
-    ctx.data().boundsY = 16;
+    ctx.data().boundsX = 30;
+    ctx.data().boundsY = 18;
     ctx.data().boundsZ = 10;
 
     ctx.getUnsafe<broadphase::LeafID>(ctx.data().plane) =
@@ -234,9 +234,16 @@ inline void actionSystem(Engine &ctx,
     }
 
     // Check if falling outside the world's bounds
-    if (curr_pos.x < 0 || curr_pos.y < 0 ||  curr_pos.x >= ctx.data().boundsX ||
-            curr_pos.y >= ctx.data().boundsY || curr_pos.z >= ctx.data().boundsZ) {
-        agent_force = Vector3 { 0, 0, 0 };
+    if (curr_pos.x < 0 || curr_pos.x >= ctx.data().boundsX) {
+        agent_force.x = 0;
+    }
+
+    if (curr_pos.y < 0 || curr_pos.y >= ctx.data().boundsY) {
+        agent_force.y = 0;
+    }
+
+    if (curr_pos.z >= ctx.data().boundsZ) {
+        agent_force.z = 0;
     }
 }
 

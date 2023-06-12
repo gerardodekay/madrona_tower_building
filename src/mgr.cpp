@@ -394,7 +394,7 @@ MADRONA_EXPORT Tensor Manager::positionTensor() const
 MADRONA_EXPORT Tensor Manager::materialPositionTensor() const
 {
     return impl_->exportTensor(3, Tensor::ElementType::Float32,
-        {impl_->cfg.numWorlds, 3});
+        {impl_->cfg.numWorlds, 49, 3});
 }
 
 MADRONA_EXPORT Tensor Manager::depthTensor() const
