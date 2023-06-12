@@ -105,6 +105,7 @@ static void generateWorld(Engine &ctx)
     ctx.getUnsafe<ExternalTorque>(agent) = Vector3::zero();
     ctx.getUnsafe<broadphase::LeafID>(agent) =
         RigidBodyPhysicsSystem::registerEntity(ctx, agent, ObjectID { 1 });
+    ctx.getUnsafe<GrabData>(agent).constraintEntity = Entity::none();
 }
 
 inline void resetSystem(Engine &ctx, WorldReset &reset)
