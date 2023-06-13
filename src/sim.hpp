@@ -46,6 +46,11 @@ struct GrabData {
     Entity constraintEntity;
 };
 
+struct Reward {
+        float rew;
+};
+
+
 enum class CarryingObj : int32_t {
     NotCarrying = 0,
     IsCarrying = 1

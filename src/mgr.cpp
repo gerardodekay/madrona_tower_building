@@ -407,4 +407,12 @@ MADRONA_EXPORT Tensor Manager::rgbTensor() const
     return impl_->rgbTensor();
 }
 
+MADRONA_EXPORT Tensor Manager::rewardTensor() const
+{
+    return impl_->exportTensor(3, Tensor::ElementType::Float32,
+                               {impl_->cfg.numWorlds, 1});
+}
+
+
+
 }
