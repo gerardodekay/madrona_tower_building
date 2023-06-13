@@ -226,7 +226,7 @@ inline void actionSystem(Engine &ctx,
         agent_torque += agent_rot.rotateVec(math::up);
     } break;
     case MoveAction::Jump: {
-        // TODO - Add logic for jumping
+        agent_force += agent_rot.rotateVec(math::up);
     } break;
     case MoveAction::Interact: {
         interactiveAction(ctx);
