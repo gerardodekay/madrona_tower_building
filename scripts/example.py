@@ -3,6 +3,7 @@ import madrona_simple_example_python
 import torch
 import time
 import sys
+import random
 
 def error_usage():
     print("interactive.py (CUDA | CPU)")
@@ -23,7 +24,7 @@ else:
 sim = madrona_simple_example_python.SimpleSimulator(
         exec_mode = exec_mode,
         gpu_id = 0,
-        num_worlds = 1,
+        num_worlds = 8*1024,
         num_obstacles = 5,
         enable_render = False,
         render_width = 1536,
@@ -40,19 +41,11 @@ print(resets.shape, resets.dtype)
 
 num_steps = 0
 while True:
-    action = input("Action: ")
+    action = random.randint(1, 8)
 
-    # Write the move forward action
-    actions[..., 0] = int(action)
+    actions[..., 0] = action
 
-    # print(actions)
-
+    start_time = time.time()
     sim.step()
-
-    print('Agent position')
-    print(positions)
-
-    print('Materials positions')
-    print(material_positions)
-
-    # time.sleep(1)
+    end_time = time.time()
+    print("Elapsed time = %s s", end_time - start_time)
